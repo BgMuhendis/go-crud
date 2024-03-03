@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"go-crud/repository"
 	"go-crud/entity"
+	"strconv"
 )
 
 var (
@@ -32,30 +33,42 @@ func main() {
 	cityRepo := respository.NewRepo(db)
 
 	http.HandleFunc("/city", func(writer http.ResponseWriter, request *http.Request) {
-		if request.Method == http.MethodGet {
-			cityList := cityRepo.List()
-			(json.NewEncoder(writer).Encode(cityList))
 
-		} else if request.Method == http.MethodPost {
-			var city entity.City
-			bodyBytes, err := io.ReadAll(request.Body)
+		switch request.Method{
 
-			if err != nil {
-				http.Error(writer, err.Error(), http.StatusBadRequest)
-			}
+			case http.MethodGet:
+				cityList := cityRepo.List()
+				(json.NewEncoder(writer).Encode(cityList))
+			
+			case http.MethodPost:
+				var city entity.City
+				bodyBytes, err := io.ReadAll(request.Body)
 
-			if err := json.Unmarshal(bodyBytes, &city); err != nil {
+				if err != nil {
+					http.Error(writer, err.Error(), http.StatusBadRequest)
+				}
 
-				http.Error(writer, err.Error(), http.StatusBadRequest)
+				if err := json.Unmarshal(bodyBytes, &city); err != nil {
 
+					http.Error(writer, err.Error(), http.StatusBadRequest)
+
+					return
+
+				}
+				cityRepo.Insert(city)
+				writer.WriteHeader(http.StatusCreated)
+
+			case http.MethodDelete:
+				if request.URL.Query().Has("id") {
+					queryId := request.URL.Query().Get("id")
+					cityId ,_:= strconv.Atoi(queryId)
+					cityRepo.DeleteById(cityId)
+				}
+			
+			default:
+				http.Error(writer, "Unsupported http method", http.StatusMethodNotAllowed)
 				return
 
-			}
-			cityRepo.Insert(city)
-			writer.WriteHeader(http.StatusCreated)
-		} else {
-			http.Error(writer, "Unsupported http method", http.StatusMethodNotAllowed)
-			return
 		}
 
 	})

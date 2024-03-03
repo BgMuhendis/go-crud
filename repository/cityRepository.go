@@ -4,14 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 	"go-crud/entity"
-	
 )
 
 type CityRepo struct {
 	db *sql.DB
 }
 
-func NewRepo(db *sql.DB) *CityRepo {
+func NewRepo(db *sql.DB) *CityRepo  {
 	return &CityRepo{
 		db: db,
 	}
@@ -66,20 +65,13 @@ func (repo CityRepo) GetById(id int) *entity.City {
 	return &city
 }
 
-func (repo CityRepo) deleteById(cityName string) {
-	stmt, err := repo.db.Prepare("select * from cities where id= $1")
+func (repo CityRepo) DeleteById(id int){
+	stmt, err := repo.db.Prepare("delete from cities where id= $1")
 
 	if err != nil {
-		return
-	} else {
-		var city entity.City
-		err := stmt.QueryRow(cityName).Scan(&city.Id, &city.Name, city.Code)
-
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			fmt.Println(city)
-		}
+		fmt.Println(err)
+	}else{
+		stmt.Query(id)
 	}
 }
 
