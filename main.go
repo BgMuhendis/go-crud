@@ -37,6 +37,21 @@ func main() {
 		switch request.Method{
 
 			case http.MethodGet:
+
+				if request.URL.Query().Has("id") {
+					queryId := request.URL.Query().Get("id")
+					cityId ,_:= strconv.Atoi(queryId)
+					city := cityRepo.GetById(cityId)
+
+					if city == nil {
+						writer.WriteHeader(http.StatusNotFound)
+						return
+					}
+
+					cityBytes , _ := json.Marshal(city)
+					writer.Write(cityBytes)
+					return
+				}
 				cityList := cityRepo.List()
 				(json.NewEncoder(writer).Encode(cityList))
 			

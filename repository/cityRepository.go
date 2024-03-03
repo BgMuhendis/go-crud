@@ -57,12 +57,10 @@ func (repo CityRepo) GetById(id int) *entity.City {
 	formattedSql := fmt.Sprintf("select * from cities where id= %v", id)
 	err := repo.db.QueryRow(formattedSql).Scan(&city.Name, &city.Id, &city.Code)
 	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(city)
 		return nil
+	} else {
+		return &city
 	}
-	return &city
 }
 
 func (repo CityRepo) DeleteById(id int){
