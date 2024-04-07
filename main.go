@@ -3,9 +3,8 @@ package main
 import (
 	"encoding/json"
 	"github.com/gofiber/fiber/v3"
-	_ "github.com/lib/pq"
-	"go-crud/database"
-	"go-crud/model"
+	"go-crud/entity"
+	"go-crud/postgresql"
 	"go-crud/repository"
 	"net/http"
 	"strconv"
@@ -17,11 +16,11 @@ func main() {
 
 	app := fiber.New()
 
-	resultConnect := database.DBConnect()
+	resultConnect := configs.DBConnect()
 	cityRepo := respository.NewRepo(resultConnect)
 
 	api := app.Group("/city")
-	api.Get("/", func(ctx fiber.Ctx) error {
+	api.Get("/", func(c fiber.Ctx) error {
 
 		cityList := cityRepo.List()
 
@@ -29,21 +28,21 @@ func main() {
 			return nil
 		}
 
-		return ctx.Status(http.StatusOK).JSON(cityList)
+		return c.Status(http.StatusOK).JSON(cityList)
 
 	})
 
-	api.Get("/:id", func(ctx fiber.Ctx) error {
+	api.Get("/:id", func(c fiber.Ctx) error {
 
-		if queryId := ctx.Params("id"); queryId != "" {
+		if queryId := c.Params("id"); queryId != "" {
 			cityId, _ := strconv.Atoi(queryId)
 			city := cityRepo.GetById(cityId)
 
 			if city == nil {
-				return ctx.Status(http.StatusNotFound).JSON("Not found")
+				return c.Status(http.StatusNotFound).JSON("Not found")
 			}
 
-			return ctx.Status(http.StatusOK).JSON(city)
+			return c.Status(http.StatusOK).JSON(city)
 
 		}
 
@@ -51,14 +50,14 @@ func main() {
 
 	})
 
-	api.Post("/", func(ctx fiber.Ctx) error {
-		var city model.City
+	api.Post("/", func(c fiber.Ctx) error {
+		var city entity.City
 
-		bodyBytes := ctx.Body()
+		bodyBytes := c.Body()
 
 		if err := json.Unmarshal(bodyBytes, &city); err != nil {
 
-			return ctx.Status(http.StatusBadRequest).JSON(err)
+			return c.Status(http.StatusBadRequest).JSON(err)
 
 		}
 		cityRepo.Insert(city)
@@ -67,9 +66,9 @@ func main() {
 
 	})
 
-	api.Delete("/:id", func(ctx fiber.Ctx) error {
+	api.Delete("/:id", func(c fiber.Ctx) error {
 
-		if queryId := ctx.Params("id"); queryId != "" {
+		if queryId := c.Params("id"); queryId != "" {
 			cityId, _ := strconv.Atoi(queryId)
 			cityRepo.DeleteById(cityId)
 
@@ -77,8 +76,8 @@ func main() {
 		return nil
 
 	})
-	go func() {
 
+	go func() {
 		app.Listen(":3000")
 
 		listen <- 1
