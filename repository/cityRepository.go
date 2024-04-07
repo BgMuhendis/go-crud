@@ -63,11 +63,12 @@ func (repo CityRepo) GetById(id int) *entity.City {
 	}
 }
 
-func (repo CityRepo) DeleteById(id int){
+func (repo CityRepo) DeleteById(id int)  {
 	stmt, err := repo.db.Prepare("delete from cities where id= $1")
 
 	if err != nil {
 		fmt.Println(err)
+		
 	}else{
 		stmt.Query(id)
 	}
