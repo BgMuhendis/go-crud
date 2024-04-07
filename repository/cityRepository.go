@@ -3,7 +3,7 @@ package respository
 import (
 	"database/sql"
 	"fmt"
-	"go-crud/entity"
+	"go-crud/model"
 )
 
 type CityRepo struct {

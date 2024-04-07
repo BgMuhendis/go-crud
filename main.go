@@ -1,93 +1,86 @@
-package respository
+package main
 
 import (
-	"database/sql"
-	"fmt"
-	"go-crud/entity"
+	"encoding/json"
+	"go-crud/database"
+	"go-crud/model"
+	"go-crud/repository"
+	"net/http"
+	"strconv"
+	"github.com/gofiber/fiber/v3"
 )
 
-type CityRepo struct {
-	db *sql.DB
-}
+func main() {
 
-func NewRepo(db *sql.DB) *CityRepo {
-	return &CityRepo{
-		db: db,
-	}
-}
+	listen := make(chan int)
 
-func (repo CityRepo) Insert(city entity.City) {
-	stmt, err := repo.db.Prepare("insert into cities(name,code) values($1,$2)")
+	app := fiber.New()
 
-	r, err := stmt.Exec(city.Name, city.Code)
+	resultConnect := database.DBConnect()
+	cityRepo := respository.NewRepo(resultConnect)
 
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(r.RowsAffected())
-	}
-}
+	api := app.Group("/city")
+	api.Get("/", func(c fiber.Ctx) error {
 
-func (repo CityRepo) List() []entity.City {
+		cityList := cityRepo.List()
 
-	var cityList []entity.City
-	rows, err := repo.db.Query("select * from cities")
-	if err != nil {
-		fmt.Println(err)
-		return cityList
+		if len(cityList) ==0 {
 
-	} else {
-
-		for rows.Next() {
-			var city entity.City
-			err := rows.Scan(&city.Name, &city.Id, &city.Code)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				cityList = append(cityList, city)
-			}
+			return nil
 		}
-		rows.Close()
-		return cityList
-	}
-}
-
-func (repo CityRepo) GetById(id int) *entity.City {
-	var city entity.City
-	formattedSql := fmt.Sprintf("select * from cities where id= %v", id)
-	err := repo.db.QueryRow(formattedSql).Scan(&city.Name, &city.Id, &city.Code)
-	if err != nil {
-		return nil
-	} else {
-		return &city
-	}
-}
-
-func (repo CityRepo) DeleteById(id int)  {
-	stmt, err := repo.db.Prepare("delete from cities where id= $1")
-
-	if err != nil {
-		fmt.Println(err)
 		
-	}else{
+		return c.Status(http.StatusOK).JSON(cityList)
 
-		stmt.Query(id)
+	})
+
+	api.Get("/:id", func(c fiber.Ctx) error {
+
+		if queryId := c.Params("id"); queryId !="" {
+			cityId, _ := strconv.Atoi(queryId)
+			city := cityRepo.GetById(cityId)
+
+			if city == nil {
+				return c.Status(http.StatusNotFound).JSON("Not found")
+			}
+
+			return c.Status(http.StatusOK).JSON(city)
+
+		
 	}
-}
+		return nil
+	})
 
-func (repo CityRepo) selectWithPreparedStatement(cityName string) {
-	stmt, err := repo.db.Prepare("select * from cities where id= $1")
-
-	if err != nil {
-		return
-	} else {
+	api.Post("/", func(c fiber.Ctx) error {
 		var city entity.City
-		err := stmt.QueryRow(cityName).Scan(&city.Id, &city.Name, city.Code)
+		bodyBytes:= c.Body()
+		if err := json.Unmarshal(bodyBytes, &city); err != nil {
 
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			fmt.Println(city)
+			return c.Status(http.StatusBadRequest).JSON(err)
 		}
-	}
+		cityRepo.Insert(city)
+
+		return nil
+
+	})
+
+	api.Delete("/:id", func(c fiber.Ctx) error {
+
+		if queryId := c.Params("id"); queryId !="" {
+			cityId, _ := strconv.Atoi(queryId)
+			cityRepo.DeleteById(cityId)
+		}
+		return nil
+
+	})
+
+
+	go func ()  {
+		app.Listen(":3000")
+
+		listen <-1
+
+	}()	
+
+	<- listen
+
 }
