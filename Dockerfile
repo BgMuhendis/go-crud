@@ -10,4 +10,4 @@ RUN go build -v -o server
 
 EXPOSE 3000
 
-CMD ["./server"]
+CMD [".\server"]
