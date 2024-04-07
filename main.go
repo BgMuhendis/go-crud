@@ -1,141 +1,93 @@
-package main
+package respository
 
 import (
-	"encoding/json"
-<<<<<<< HEAD
-	"github.com/gofiber/fiber/v3"
-=======
->>>>>>> 95525087c828c83aa5beb488544808bb1a855014
+	"database/sql"
+	"fmt"
 	"go-crud/entity"
-	"go-crud/postgresql"
-	"go-crud/repository"
-	"net/http"
-	"strconv"
-	"github.com/gofiber/fiber/v3"
 )
 
-func main() {
+type CityRepo struct {
+	db *sql.DB
+}
 
-	listen := make(chan int)
+func NewRepo(db *sql.DB) *CityRepo {
+	return &CityRepo{
+		db: db,
+	}
+}
 
-	app := fiber.New()
+func (repo CityRepo) Insert(city entity.City) {
+	stmt, err := repo.db.Prepare("insert into cities(name,code) values($1,$2)")
 
-	resultConnect := configs.DBConnect()
-	cityRepo := respository.NewRepo(resultConnect)
+	r, err := stmt.Exec(city.Name, city.Code)
 
-<<<<<<< HEAD
-	api := app.Group("/city")
-	api.Get("/", func(c fiber.Ctx) error {
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(r.RowsAffected())
+	}
+}
 
-		cityList := cityRepo.List()
+func (repo CityRepo) List() []entity.City {
 
-		if len(cityList) == 0 {
-=======
+	var cityList []entity.City
+	rows, err := repo.db.Query("select * from cities")
+	if err != nil {
+		fmt.Println(err)
+		return cityList
 
-	api := app.Group("/city")
-	api.Get("/", func(c fiber.Ctx) error {
+	} else {
 
-		cityList := cityRepo.List()
-
-		if len(cityList) ==0 {
->>>>>>> 95525087c828c83aa5beb488544808bb1a855014
-			return nil
-		}
-		
-		return c.Status(http.StatusOK).JSON(cityList)
-
-
-		return c.Status(http.StatusOK).JSON(cityList)
-
-	})
-
-	api.Get("/:id", func(c fiber.Ctx) error {
-
-<<<<<<< HEAD
-		if queryId := c.Params("id"); queryId != "" {
-=======
-		if queryId := c.Params("id"); queryId !="" {
->>>>>>> 95525087c828c83aa5beb488544808bb1a855014
-			cityId, _ := strconv.Atoi(queryId)
-			city := cityRepo.GetById(cityId)
-
-			if city == nil {
-				return c.Status(http.StatusNotFound).JSON("Not found")
+		for rows.Next() {
+			var city entity.City
+			err := rows.Scan(&city.Name, &city.Id, &city.Code)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				cityList = append(cityList, city)
 			}
-
-			return c.Status(http.StatusOK).JSON(city)
-<<<<<<< HEAD
-
-=======
-			
->>>>>>> 95525087c828c83aa5beb488544808bb1a855014
 		}
+		rows.Close()
+		return cityList
+	}
+}
 
+func (repo CityRepo) GetById(id int) *entity.City {
+	var city entity.City
+	formattedSql := fmt.Sprintf("select * from cities where id= %v", id)
+	err := repo.db.QueryRow(formattedSql).Scan(&city.Name, &city.Id, &city.Code)
+	if err != nil {
 		return nil
+	} else {
+		return &city
+	}
+}
 
-	})
+func (repo CityRepo) DeleteById(id int)  {
+	stmt, err := repo.db.Prepare("delete from cities where id= $1")
 
-	api.Post("/", func(c fiber.Ctx) error {
-		var city entity.City
-
-<<<<<<< HEAD
-		bodyBytes := c.Body()
-=======
-		bodyBytes:= c.Body()
->>>>>>> 95525087c828c83aa5beb488544808bb1a855014
-
-		if err := json.Unmarshal(bodyBytes, &city); err != nil {
-
-			return c.Status(http.StatusBadRequest).JSON(err)
-<<<<<<< HEAD
-
-=======
+	if err != nil {
+		fmt.Println(err)
 		
->>>>>>> 95525087c828c83aa5beb488544808bb1a855014
+	}else{
+
+		stmt.Query(id)
+	}
+}
+
+func (repo CityRepo) selectWithPreparedStatement(cityName string) {
+	stmt, err := repo.db.Prepare("select * from cities where id= $1")
+
+	if err != nil {
+		return
+	} else {
+		var city entity.City
+		err := stmt.QueryRow(cityName).Scan(&city.Id, &city.Name, city.Code)
+
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println(city)
 		}
-		cityRepo.Insert(city)
-
-		return nil
-
-	})
-
-	api.Delete("/:id", func(c fiber.Ctx) error {
-
-<<<<<<< HEAD
-		if queryId := c.Params("id"); queryId != "" {
-			cityId, _ := strconv.Atoi(queryId)
-			cityRepo.DeleteById(cityId)
-
-=======
-		if queryId := c.Params("id"); queryId !="" {
-			cityId, _ := strconv.Atoi(queryId)
-			cityRepo.DeleteById(cityId)
-			
->>>>>>> 95525087c828c83aa5beb488544808bb1a855014
-		}
-		return nil
-
-	})
-
-<<<<<<< HEAD
-	go func() {
-		app.Listen(":3000")
-
-		listen <- 1
-
-	}()
-
-	<-listen
-=======
-
-	go func ()  {
-		app.Listen(":3000")
-
-		listen <-1
-
-	}()	
-
-	<- listen
->>>>>>> 95525087c828c83aa5beb488544808bb1a855014
-
+	}
 }
