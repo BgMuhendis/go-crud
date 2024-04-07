@@ -2,81 +2,89 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/gofiber/fiber/v3"
 	_ "github.com/lib/pq"
-	"go-crud/configs"
-	"go-crud/entity"
+	"go-crud/database"
+	"go-crud/model"
 	"go-crud/repository"
-	"io"
 	"net/http"
 	"strconv"
 )
 
 func main() {
 
-	resultConnect := configs.DBConnect()
+	listen := make(chan int)
+
+	app := fiber.New()
+
+	resultConnect := database.DBConnect()
 	cityRepo := respository.NewRepo(resultConnect)
 
-	http.HandleFunc("/city", func(writer http.ResponseWriter, request *http.Request) {
+	api := app.Group("/city")
+	api.Get("/", func(ctx fiber.Ctx) error {
 
-		switch request.Method {
+		cityList := cityRepo.List()
 
-		case http.MethodGet:
-
-			if request.URL.Query().Has("id") {
-				queryId := request.URL.Query().Get("id")
-				cityId, _ := strconv.Atoi(queryId)
-				city := cityRepo.GetById(cityId)
-
-				if city == nil {
-					writer.WriteHeader(http.StatusNotFound)
-					return
-				}
-
-				cityBytes, _ := json.Marshal(city)
-				writer.Write(cityBytes)
-				return
-			}
-			cityList := cityRepo.List()
-			(json.NewEncoder(writer).Encode(cityList))
-
-		case http.MethodPost:
-			var city entity.City
-			bodyBytes, err := io.ReadAll(request.Body)
-
-			if err != nil {
-				http.Error(writer, err.Error(), http.StatusBadRequest)
-			}
-
-			if err := json.Unmarshal(bodyBytes, &city); err != nil {
-
-				http.Error(writer, err.Error(), http.StatusBadRequest)
-
-				return
-
-			}
-			cityRepo.Insert(city)
-			writer.WriteHeader(http.StatusCreated)
-
-		case http.MethodDelete:
-			if request.URL.Query().Has("id") {
-				queryId := request.URL.Query().Get("id")
-				cityId, _ := strconv.Atoi(queryId)
-				cityRepo.DeleteById(cityId)
-			}
-
-		default:
-			http.Error(writer, "Unsupported http method", http.StatusMethodNotAllowed)
-			return
-
+		if len(cityList) == 0 {
+			return nil
 		}
+
+		return ctx.Status(http.StatusOK).JSON(cityList)
 
 	})
 
-	err := http.ListenAndServe("localhost:3000", nil)
+	api.Get("/:id", func(ctx fiber.Ctx) error {
 
-	if err != nil {
-		fmt.Println(err)
-	}
+		if queryId := ctx.Params("id"); queryId != "" {
+			cityId, _ := strconv.Atoi(queryId)
+			city := cityRepo.GetById(cityId)
+
+			if city == nil {
+				return ctx.Status(http.StatusNotFound).JSON("Not found")
+			}
+
+			return ctx.Status(http.StatusOK).JSON(city)
+
+		}
+
+		return nil
+
+	})
+
+	api.Post("/", func(ctx fiber.Ctx) error {
+		var city model.City
+
+		bodyBytes := ctx.Body()
+
+		if err := json.Unmarshal(bodyBytes, &city); err != nil {
+
+			return ctx.Status(http.StatusBadRequest).JSON(err)
+
+		}
+		cityRepo.Insert(city)
+
+		return nil
+
+	})
+
+	api.Delete("/:id", func(ctx fiber.Ctx) error {
+
+		if queryId := ctx.Params("id"); queryId != "" {
+			cityId, _ := strconv.Atoi(queryId)
+			cityRepo.DeleteById(cityId)
+
+		}
+		return nil
+
+	})
+	go func() {
+
+		app.Listen(":3000")
+
+		listen <- 1
+
+	}()
+
+	<-listen
 
 }

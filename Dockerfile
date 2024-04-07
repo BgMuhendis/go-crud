@@ -1,13 +1,23 @@
-FROM golang:1.21.6
+FROM golang:1.21.6-alpine AS builder
 
-WORKDIR /app
+LABEL maintainer="Muhammet Hadi KAMAT <muhammedhhadikamat@gmail.com>"
 
-COPY . .
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+
+WORKDIR /build
+
+COPY go.* .
 
 RUN go mod tidy
 
-RUN go build -v -o server
+COPY . .
+
+RUN go build -v -o server .
 
 EXPOSE 3000
 
-CMD [".\server"]
+FROM scratch
+
+COPY --from=builder ["/build/server", "/build/.env", "/"]
+
+CMD ["/server"]
